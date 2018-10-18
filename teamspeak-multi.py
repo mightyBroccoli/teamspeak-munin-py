@@ -126,9 +126,10 @@ class TeamspeakMulti:
 
 	def run(self):
 		# read the configuration from munin environment
-		server = (os.environ.get('host', "localhost"), os.environ.get('port', 10011))
+		host = os.environ.get('host', "localhost")
+		port = os.environ.get('port', 10011)
 
-		with ts3.query.TS3Connection(server[0], server[1]) as ts3conn:
+		with ts3.query.TS3Connection(host, port) as ts3conn:
 			# will raise a TS3QueryError if response code is not 0
 			try:
 				ts3conn.login(
@@ -147,19 +148,19 @@ class TeamspeakMulti:
 			print('\n'.join(result[key]))
 
 	def main(self):
-		if sys.argv.__len__() == 2:
-			if sys.argv[1] == "config":
-				for key in self.config().keys():
-					print('\n'.join(self.config()[key]))
-				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
-					self.run()
-			elif sys.argv[1] == 'autoconf':
-				if None not in {os.environ.get('username'), os.environ.get('password')}:
-					print('yes')
-				else:
-					print('no env configuration options are missing')
-		else:
-			self.run()
+		# check if first argument is config or autoconf if not fetch data
+		if sys.argv[1] == "config":
+			for key in self.config().keys():
+				print('\n'.join(self.config()[key]))
+			if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
+				self.run()
+		elif sys.argv[1] == 'autoconf':
+			if None in {os.environ.get('username'), os.environ.get('password')}:
+				print('yes')
+			else:
+				print('env variables are missing')
+
+		self.run()
 
 
 if __name__ == "__main__":
