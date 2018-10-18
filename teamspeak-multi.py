@@ -159,8 +159,8 @@ class TeamspeakMulti:
 				print('yes')
 			else:
 				print('env variables are missing')
-
-		self.run()
+		else:
+			self.run()
 
 
 if __name__ == "__main__":
