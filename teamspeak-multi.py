@@ -5,6 +5,7 @@
 # 	* general bandwidth
 # 	* filetransfer bandwidth
 # 	* uptime
+#	* user count
 #
 # Parameters understood:
 #     config   (required)
