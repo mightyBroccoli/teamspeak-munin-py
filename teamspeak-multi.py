@@ -126,20 +126,14 @@ class TeamspeakMulti:
 
 	def run(self):
 		# read the configuration from munin environment
-		try:
-			server = (os.environ['host'], os.environ['port'])
-		except KeyError:
-			# if connection variables are not set use default
-			server = ('localhost', 10011)
-
-		auth = (os.environ['username'], os.environ['password'])
+		server = (os.environ.get('host', "localhost"), os.environ.get('port', 10011))
 
 		with ts3.query.TS3Connection(server[0], server[1]) as ts3conn:
 			# will raise a TS3QueryError if response code is not 0
 			try:
 				ts3conn.login(
-						client_login_name=auth[0],
-						client_login_password=auth[1],
+						client_login_name=os.environ['username'],
+						client_login_password=os.environ['password'],
 				)
 			except ts3.query.TS3QueryError as err:
 				print("Login failed:", err.resp.error["msg"])
@@ -153,22 +147,17 @@ class TeamspeakMulti:
 			print('\n'.join(result[key]))
 
 	def main(self):
-		if (sys.argv.__len__() == 2) and (sys.argv[1] == "config"):
-			for key in self.config().keys():
-				print('\n'.join(self.config()[key]))
-			try:
-				if os.environ['MUNIN_CAP_DIRTYCONFIG'] == '1':
+		if sys.argv.__len__() == 2:
+			if sys.argv[1] == "config":
+				for key in self.config().keys():
+					print('\n'.join(self.config()[key]))
+				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
 					self.run()
-			except KeyError:
-				pass
-
-		elif (sys.argv.__len__() == 2) and (sys.argv[1] == 'autoconf'):
-			# check host if env variables are set
-			try:
-				if None not in {os.environ['username'], os.environ['password']}:
+			elif sys.argv[1] == 'autoconf':
+				if None not in {os.environ.get('username'), os.environ.get('password')}:
 					print('yes')
-			except KeyError:
-				print('no env configuration options are missing')
+				else:
+					print('no env configuration options are missing')
 		else:
 			self.run()
 
