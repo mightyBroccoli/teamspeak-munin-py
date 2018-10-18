@@ -26,7 +26,7 @@ class TeamspeakMulti:
 			'bandwidth': [
 				'multigraph teamspeak_transfer',
 				'graph_order down up',
-				'graph_title Teamspeak Transfer',
+				'graph_title Teamspeak Bandwidth',
 				'graph_args --base 1024',
 				'graph_vlabel bits in (-) / out (+)',
 				'graph_category voip',
@@ -41,7 +41,7 @@ class TeamspeakMulti:
 				'up.info Bandwidth sent in the last 5 minutes',
 				'up.type DERIVE',
 				'up.negative down',
-				'up.min 0',
+				'up.min 0'
 			],
 			'filetransfer': [
 				'multigraph teamspeak_fttransfer',
@@ -61,7 +61,7 @@ class TeamspeakMulti:
 				'ftup.info Bandwidth sent in the last 5 minutes',
 				'ftup.type DERIVE',
 				'ftup.negative down',
-				'ftup.min 0',
+				'ftup.min 0'
 			],
 			'uptime': [
 				'multigraph teamspeak_uptime',
@@ -83,18 +83,19 @@ class TeamspeakMulti:
 				'graph_args --base 1024 -l 0',
 				'graph_printf %.0lf',
 				'graph_vlabel connected users',
-				'graph_info This graph shows the number of connected users on the Teamspeak3 server',
 				'graph_category voip',
+				'graph_info This graph shows the number of connected users on the Teamspeak3 server',
 
 				'user.label last 5 minutes',
-				'user.info users connected in the last 5 minutes'
+				'user.info users connected in the last 5 minutes',
+				'user.min 0'
 			]
 		}
 
 		return config
 
 	def get_data(self, response):
-		data ={
+		data = {
 			'teamspeak_transfer': [],
 			'teamspeak_fttransfer': [],
 			'teamspeak_uptime': [],
@@ -103,7 +104,7 @@ class TeamspeakMulti:
 
 		# transfer
 		data['teamspeak_transfer'].append('multigraph teamspeak_transfer')
-		data['teamspeak_transfer'].append('down.value %s ' % response["connection_bytes_received_total"])
+		data['teamspeak_transfer'].append('down.value %s' % response["connection_bytes_received_total"])
 		data['teamspeak_transfer'].append('up.value %s' % response["connection_bytes_sent_total"])
 
 		# fttransfer
@@ -124,7 +125,12 @@ class TeamspeakMulti:
 
 	def run(self):
 		# read the configuration from munin environment
-		server = (os.environ['host'], os.environ['port'], os.environ['id'])
+		try:
+			server = (os.environ['host'], os.environ['port'], os.environ['id'])
+		except KeyError:
+			# if connection variables are not set use default
+			server = ('localhost', 10011, 1)
+
 		auth = (os.environ['username'], os.environ['password'])
 
 		with ts3.query.TS3Connection(server[0], server[1]) as ts3conn:
@@ -139,10 +145,9 @@ class TeamspeakMulti:
 				exit(1)
 
 			ts3conn.use(sid=server[2])
-			hostinfo = ts3conn.hostinfo()
+			hostinfo = ts3conn.hostinfo().parsed
 
-		info = hostinfo.parsed
-		result = self.get_data(info[0])
+		result = self.get_data(hostinfo[0])
 
 		for key in result.keys():
 			print('\n'.join(result[key]))
@@ -160,7 +165,7 @@ class TeamspeakMulti:
 		elif (sys.argv.__len__() == 2) and (sys.argv[1] == 'autoconf'):
 			# check host if env variables are set
 			try:
-				if None not in {os.environ['id'], os.environ['username'], os.environ['password']}:
+				if None not in {os.environ['username'], os.environ['password']}:
 					print('yes')
 			except KeyError:
 				print('no env configuration options are missing')
