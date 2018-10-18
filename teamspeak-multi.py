@@ -61,7 +61,7 @@ class TeamspeakMulti:
 				'ftup.label sent',
 				'ftup.info Bandwidth sent in the last 5 minutes',
 				'ftup.type DERIVE',
-				'ftup.negative down',
+				'ftup.negative ftdown',
 				'ftup.min 0'
 			],
 			'uptime': [
