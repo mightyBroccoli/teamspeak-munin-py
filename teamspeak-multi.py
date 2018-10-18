@@ -5,7 +5,7 @@
 # 	* general bandwidth
 # 	* filetransfer bandwidth
 # 	* uptime
-#	* user count
+# 	* user count
 #
 # Parameters understood:
 #     config   (required)
@@ -29,17 +29,17 @@ class TeamspeakMulti:
 				'graph_order down up',
 				'graph_title Teamspeak Bandwidth',
 				'graph_args --base 1024',
-				'graph_vlabel bits in (-) / out (+)',
+				'graph_vlabel bytes in (-) / out (+)',
 				'graph_category voip',
-				'graph_info This graph shows the Teamspeak3 Voice Bandwidth In and Out',
+				'graph_info graph showing the total Teamspeak3 Bandwidth In and Out',
 
 				'down.label received',
-				'down.info Bandwidth received in the last 5 minutes',
+				'down.info total amount of bytes received in the last 5 minutes',
 				'down.type DERIVE',
 				'down.graph no',
 				'down.min 0',
 				'up.label sent',
-				'up.info Bandwidth sent in the last 5 minutes',
+				'up.info total amount of bytes sent in the last 5 minutes',
 				'up.type DERIVE',
 				'up.negative down',
 				'up.min 0'
@@ -49,39 +49,40 @@ class TeamspeakMulti:
 				'graph_order ftdown ftup',
 				'graph_title Teamspeak File Bandwidth',
 				'graph_args --base 1024',
-				'graph_vlabel bits in (-) / out (+)',
+				'graph_vlabel bytes in (-) / out (+)',
 				'graph_category voip',
-				'graph_info This graph shows the Teamspeak3 File Bandwidth In and Out',
+				'graph_info graph showing the Teamspeak3 File Bandwidth In and Out',
 
 				'ftdown.label received',
-				'ftdown.info Bandwidth received in the last 5 minutes',
+				'ftdown.info total amount of bytes received for file transfers in the last 5 minutes',
 				'ftdown.type DERIVE',
 				'ftdown.graph no',
 				'ftdown.min 0',
 				'ftup.label sent',
-				'ftup.info Bandwidth sent in the last 5 minutes',
+				'ftup.info total amount of bytes sent for file transfers in the last 5 minutes',
 				'ftup.type DERIVE',
 				'ftup.negative ftdown',
 				'ftup.min 0'
 			],
 			'uptime': [
 				'multigraph teamspeak_uptime',
-				'graph_title Connected Teamspeak Users',
+				'graph_title TeamSpeak Uptime',
 				'graph_args --base 1000 -l 0',
 				'graph_scale no',
-				'graph_vlabel uptime in days',
+				'graph_vlabel days',
 				'graph_category voip',
-				'graph_info This graph shows the Teamspeak3 overall uptime',
+				'graph_info graph showing the Teamspeak3 overall uptime',
 
-				'uptime.label uptime in seconds',
+				'uptime.label uptime in days',
 				'uptime.info TeamSpeak Server Uptime',
+				'uptime.cdef uptime,86400,/',
 				'uptime.min 0',
 				'uptime.draw AREA'
 			],
 			'users': [
 				'multigraph teamspeak_usercount',
-				'graph_title TeamSpeak User Activity',
-				'graph_args --base 1024 -l 0',
+				'graph_title TeamSpeak User Count',
+				'graph_args --base 1000 -l 0',
 				'graph_printf %.0lf',
 				'graph_vlabel connected users',
 				'graph_category voip',
@@ -115,22 +116,21 @@ class TeamspeakMulti:
 
 		# uptime
 		data['teamspeak_uptime'].append('multigraph teamspeak_uptime')
-		uptime = int(response["instance_uptime"]) / 86400
-		data['teamspeak_uptime'].append('uptime.value %s' % str(uptime))
+		data['teamspeak_uptime'].append('uptime.value %s' % response["instance_uptime"])
 
 		# user count
 		data['teamspeak_usercount'].append('multigraph teamspeak_usercount')
-		data['teamspeak_usercount'].append('user.value %s' % response['virtualservers_total_clients_online'])
+		data['teamspeak_usercount'].append('user.value %s' % response["virtualservers_total_clients_online"])
 
 		return data
 
 	def run(self):
 		# read the configuration from munin environment
 		try:
-			server = (os.environ['host'], os.environ['port'], os.environ['id'])
+			server = (os.environ['host'], os.environ['port'])
 		except KeyError:
 			# if connection variables are not set use default
-			server = ('localhost', 10011, 1)
+			server = ('localhost', 10011)
 
 		auth = (os.environ['username'], os.environ['password'])
 
@@ -145,7 +145,6 @@ class TeamspeakMulti:
 				print("Login failed:", err.resp.error["msg"])
 				exit(1)
 
-			ts3conn.use(sid=server[2])
 			hostinfo = ts3conn.hostinfo().parsed
 
 		result = self.get_data(hostinfo[0])
