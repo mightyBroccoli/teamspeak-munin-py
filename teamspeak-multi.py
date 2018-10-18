@@ -149,17 +149,18 @@ class TeamspeakMulti:
 
 	def main(self):
 		# check if first argument is config or autoconf if not fetch data
-		if sys.argv[1] == "config":
-			for key in self.config().keys():
-				print('\n'.join(self.config()[key]))
-			if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
-				self.run()
-		elif sys.argv[1] == 'autoconf':
-			if None in {os.environ.get('username'), os.environ.get('password')}:
-				print('yes')
-			else:
-				print('env variables are missing')
-		else:
+		try:
+			if sys.argv[1] == "config":
+				for key in self.config().keys():
+					print('\n'.join(self.config()[key]))
+				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
+					self.run()
+			elif sys.argv[1] == 'autoconf':
+				if None in {os.environ.get('username'), os.environ.get('password')}:
+					print('yes')
+				else:
+					print('env variables are missing')
+		except IndexError:
 			self.run()
 
 
