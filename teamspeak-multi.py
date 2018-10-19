@@ -149,7 +149,7 @@ class TeamspeakMulti:
 
 	def main(self):
 		# check if first argument is config or autoconf if not fetch data
-		try:
+		if sys.argv.__len__() >= 2:
 			if sys.argv[1] == "config":
 				for key in self.config().keys():
 					print('\n'.join(self.config()[key]))
@@ -160,7 +160,7 @@ class TeamspeakMulti:
 					print('yes')
 				else:
 					print('env variables are missing')
-		except IndexError:
+		else:
 			self.run()
 
 
