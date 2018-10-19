@@ -156,14 +156,14 @@ class TeamspeakMulti:
 				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
 					self.run()
 			elif sys.argv[1] == 'autoconf':
-				if None in {os.environ.get('username'), os.environ.get('password')}:
-					print('yes')
-				else:
+				if None in [os.environ.get('username'), os.environ.get('password')]:
 					print('env variables are missing')
+				else:
+					print('yes')
 		else:
 			self.run()
 
 
 if __name__ == "__main__":
 	TeamspeakMulti().main()
-	quit(0)
+	exit(0)
