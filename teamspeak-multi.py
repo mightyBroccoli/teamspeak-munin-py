@@ -38,7 +38,7 @@ class TeamspeakMulti:
 				'down.type DERIVE',
 				'down.graph no',
 				'down.min 0',
-				'up.label sent',
+				'up.label bps',
 				'up.info total amount of bytes sent in the last 5 minutes',
 				'up.type DERIVE',
 				'up.negative down',
@@ -53,7 +53,7 @@ class TeamspeakMulti:
 				'graph_category voip',
 				'graph_info graph showing the Teamspeak3 File Bandwidth In and Out',
 
-				'ftdown.label received',
+				'ftdown.label bps',
 				'ftdown.info total amount of bytes received for file transfers in the last 5 minutes',
 				'ftdown.type DERIVE',
 				'ftdown.graph no',
@@ -88,7 +88,7 @@ class TeamspeakMulti:
 				'graph_category voip',
 				'graph_info This graph shows the number of connected users on the Teamspeak3 server',
 
-				'user.label last 5 minutes',
+				'user.label users',
 				'user.info users connected in the last 5 minutes',
 				'user.min 0'
 			]

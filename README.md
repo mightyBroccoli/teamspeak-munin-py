@@ -24,7 +24,7 @@ To check if the plugin is working correctly it is necessary to first instruct th
 telnet localhost 4949 # localhost or IP the munin-node
 cap multigraph
 list
-fetch nextcloud_multi
+fetch teamspeak-munin.py
 ```
 The `list` command will return a list of all plugins currently active. This list should feature the newly activated 
 teamspeak plugin.
