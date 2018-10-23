@@ -53,12 +53,12 @@ class TeamspeakMulti:
 				'graph_category voip',
 				'graph_info graph showing the Teamspeak3 File Bandwidth In and Out',
 
-				'ftdown.label bps',
+				'ftdown.label received',
 				'ftdown.info total amount of bytes received for file transfers in the last 5 minutes',
 				'ftdown.type DERIVE',
 				'ftdown.graph no',
 				'ftdown.min 0',
-				'ftup.label sent',
+				'ftup.label bps',
 				'ftup.info total amount of bytes sent for file transfers in the last 5 minutes',
 				'ftup.type DERIVE',
 				'ftup.negative ftdown',
@@ -132,27 +132,26 @@ class TeamspeakMulti:
 		with ts3.query.TS3Connection(host, port) as ts3conn:
 			# will raise a TS3QueryError if response code is not 0
 			try:
-				ts3conn.login(
-						client_login_name=os.environ['username'],
-						client_login_password=os.environ['password'],
-				)
-			except ts3.query.TS3QueryError as err:
+				ts3conn.login(client_login_name=os.environ['username'],
+							client_login_password=os.environ['password'])
+
+				hostinfo = ts3conn.hostinfo().parsed
+				result = self.get_data(hostinfo[0])
+
+				# for key in results print every entry in dict
+				[print('\n'.join(result[key])) for key in result.keys()]
+
+			except (ts3.query.TS3QueryError,KeyError) as err:
 				print("Login failed:", err.resp.error["msg"])
 				exit(1)
 
-			hostinfo = ts3conn.hostinfo().parsed
-
-		result = self.get_data(hostinfo[0])
-
-		for key in result.keys():
-			print('\n'.join(result[key]))
-
 	def main(self):
-		# check if first argument is config or autoconf if not fetch data
+		# check if any argument is given
 		if sys.argv.__len__() >= 2:
+			# check if first argument is config or autoconf if not fetch data
 			if sys.argv[1] == "config":
-				for key in self.config().keys():
-					print('\n'.join(self.config()[key]))
+				# for key in config().keys() print every entry in dict
+				[print('\n'.join(self.config()[key])) for key in self.config().keys()]
 				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
 					self.run()
 			elif sys.argv[1] == 'autoconf':
@@ -166,4 +165,3 @@ class TeamspeakMulti:
 
 if __name__ == "__main__":
 	TeamspeakMulti().main()
-	exit(0)
