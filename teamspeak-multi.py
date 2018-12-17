@@ -19,50 +19,33 @@
 import ts3
 import sys
 import os
+import re
 
 
 class TeamspeakMulti:
-	def config(self):
-		config = {
+	def __init__(self):
+		# read the configuration from munin environment
+		self.host = os.environ.get('host', "localhost")
+		self.port = os.environ.get('port', 10011)
+		self.id = os.environ.get('id', "1").split(sep=",")
+
+		self.names = dict()
+		self.graph = {
 			'bandwidth': [
 				'multigraph teamspeak_transfer',
-				'graph_order down up',
 				'graph_title Teamspeak Bandwidth',
 				'graph_args --base 1024',
 				'graph_vlabel bytes in (-) / out (+)',
 				'graph_category voip',
-				'graph_info graph showing the total Teamspeak3 Bandwidth In and Out',
-
-				'down.label received',
-				'down.info total amount of bytes received in the last 5 minutes',
-				'down.type DERIVE',
-				'down.graph no',
-				'down.min 0',
-				'up.label bps',
-				'up.info total amount of bytes sent in the last 5 minutes',
-				'up.type DERIVE',
-				'up.negative down',
-				'up.min 0'
+				'graph_info graph showing the total Teamspeak3 Bandwidth In and Out'
 			],
 			'filetransfer': [
 				'multigraph teamspeak_fttransfer',
-				'graph_order ftdown ftup',
 				'graph_title Teamspeak File Bandwidth',
 				'graph_args --base 1024',
 				'graph_vlabel bytes in (-) / out (+)',
 				'graph_category voip',
-				'graph_info graph showing the Teamspeak3 File Bandwidth In and Out',
-
-				'ftdown.label received',
-				'ftdown.info total amount of bytes received for file transfers in the last 5 minutes',
-				'ftdown.type DERIVE',
-				'ftdown.graph no',
-				'ftdown.min 0',
-				'ftup.label bps',
-				'ftup.info total amount of bytes sent for file transfers in the last 5 minutes',
-				'ftup.type DERIVE',
-				'ftup.negative ftdown',
-				'ftup.min 0'
+				'graph_info graph showing the Teamspeak3 File Bandwidth In and Out'
 			],
 			'uptime': [
 				'multigraph teamspeak_uptime',
@@ -71,13 +54,7 @@ class TeamspeakMulti:
 				'graph_scale no',
 				'graph_vlabel days',
 				'graph_category voip',
-				'graph_info graph showing the Teamspeak3 overall uptime',
-
-				'uptime.label uptime in days',
-				'uptime.info TeamSpeak Server Uptime',
-				'uptime.cdef uptime,86400,/',
-				'uptime.min 0',
-				'uptime.draw AREA'
+				'graph_info graph showing the Teamspeak3 overall uptime'
 			],
 			'users': [
 				'multigraph teamspeak_usercount',
@@ -86,62 +63,150 @@ class TeamspeakMulti:
 				'graph_printf %.0lf',
 				'graph_vlabel connected users',
 				'graph_category voip',
-				'graph_info This graph shows the number of connected users on the Teamspeak3 server',
-
-				'user.label users',
-				'user.info users connected in the last 5 minutes',
-				'user.min 0'
+				'graph_info This graph shows the number of connected users on the Teamspeak3 server'
+			],
+			'connection': [
+				'multigraph teamspeak_connection',
+				'graph_title TeamSpeak connection statistics',
+				'graph_args --base 1000 -l 0',
+				'graph_printf %.0lf',
+				'graph_vlabel connected users',
+				'graph_category voip',
+				'graph_info graph showing general connection statistics'
+			]
+		}
+		self.labels = {
+			"bandwidth": [
+				'down_%d.label %s',
+				'down_%d.info total amount of bytes received in the last 5 minutes',
+				'down_%d.type DERIVE',
+				'down_%d.graph no',
+				'down_%d.min 0',
+				'up_%d.label %s',
+				'up_%d.info total amount of bytes sent in the last 5 minutes',
+				'up_%d.type DERIVE',
+				'up_%d.negative down',
+				'up_%d.min 0'
+			],
+			"filetransfer": [
+				'ftdown_%d.label %s',
+				'ftdown_%d.info file transfer bytes received in the last 5 minutes',
+				'ftdown_%d.type DERIVE',
+				'ftdown_%d.graph no',
+				'ftdown_%d.min 0',
+				'ftup_%d.label %s',
+				'ftup_%d.info file transfer bytes sent in the last 5 minutes',
+				'ftup_%d.type DERIVE',
+				'ftup_%d.negative ftdown',
+				'ftup_%d.min 0'
+			],
+			"uptime": [
+				'uptime_%d.label %s uptime',
+				'uptime_%d.info %s server uptime',
+				'uptime_%d.cdef uptime,86400,/',
+				'uptime_%d.min 0',
+				'uptime_%d.draw AREA'
+			],
+			"users": [
+				'user_%d.label %s usercount',
+				'user_%d.info users connected in the last 5 minutes',
+				'user_%d.min 0',
+				'queryuser_%d.label %s queryuserscount',
+				'queryuser_%d.info queryusers connected in the last 5 minutes',
+				'queryuser_%d.min 0',
+				'ping_%d.label %s avg. ping',
+				'ping_%d.info average ping of users connected to %s',
+				'ping_%d.min 0',
+				'pktloss_%d.label %s avg. packetloss',
+				'pktloss_%d.info average packetloss of users connected to %s',
+				'pktloss_%d.min 0'
+			],
+			"connection": [
+				'ping_%d.label %s avg. ping',
+				'ping_%d.info average ping of users connected to %s',
+				'ping_%d.min 0',
+				'pktloss_%d.label %s avg. packetloss',
+				'pktloss_%d.info average packetloss of users connected to %s',
+				'pktloss_%d.min 0'
 			]
 		}
 
-		return config
+	def config(self):
+		# todo comment
+		self.run("config")
 
-	def get_data(self, response):
+		for key in self.graph:
+			print('\n'.join(self.graph[key]))
+
+			for sid in self.id:
+				if sid.isdigit():
+					name = self.names[sid]
+					print('\n'.join(self.labels[key]).replace("%d", str(sid)).replace("%s", str(name)))
+
+	def get_data(self,sid, response):
 		data = {
 			'teamspeak_transfer': [],
 			'teamspeak_fttransfer': [],
 			'teamspeak_uptime': [],
-			'teamspeak_usercount': []
+			'teamspeak_usercount': [],
+			'teamspeak_connection': []
 		}
 
 		# transfer
 		data['teamspeak_transfer'].append('multigraph teamspeak_transfer')
-		data['teamspeak_transfer'].append('down.value %s' % response["connection_bytes_received_total"])
-		data['teamspeak_transfer'].append('up.value %s' % response["connection_bytes_sent_total"])
+		data['teamspeak_transfer'].append('down_%s.value %s' % (sid, response["connection_bytes_received_total"]))
+		data['teamspeak_transfer'].append('up_%s.value %s' % (sid, response["connection_bytes_sent_total"]))
 
 		# fttransfer
 		data['teamspeak_fttransfer'].append('multigraph teamspeak_fttransfer')
-		data['teamspeak_fttransfer'].append('ftdown.value %s' % response["connection_filetransfer_bytes_received_total"])
-		data['teamspeak_fttransfer'].append('ftup.value %s' % response["connection_filetransfer_bytes_sent_total"])
+		data['teamspeak_fttransfer'].append('ftdown_%s.value %s' % (sid, response["connection_filetransfer_bytes_received_total"]))
+		data['teamspeak_fttransfer'].append('ftup_%s.value %s' % (sid, response["connection_filetransfer_bytes_sent_total"]))
 
 		# uptime
 		data['teamspeak_uptime'].append('multigraph teamspeak_uptime')
-		data['teamspeak_uptime'].append('uptime.value %s' % response["instance_uptime"])
+		data['teamspeak_uptime'].append('uptime_%s.value %s' % (sid, response["virtualserver_uptime"]))
 
-		# user count
+		# user connections
+		clientcount = int(response["virtualserver_clientsonline"]) - int(response["virtualserver_queryclientsonline"])
+
 		data['teamspeak_usercount'].append('multigraph teamspeak_usercount')
-		data['teamspeak_usercount'].append('user.value %s' % response["virtualservers_total_clients_online"])
+		data['teamspeak_usercount'].append('user_%s.value %s' % (sid, clientcount))
+		data['teamspeak_usercount'].append('queryuser_%s.value %s' % (sid, response["virtualserver_queryclientsonline"]))
 
-		return data
+		# connection statistics
+		data['teamspeak_connection'].append('multigraph teamspeak_connection')
+		data['teamspeak_connection'].append('ping_%s.value %s' % (sid, response["virtualserver_total_ping"]))
+		data['teamspeak_connection'].append('pktloss_%s.value %s' % (sid, response["virtualserver_total_packetloss_total"]))
 
-	def run(self):
-		# read the configuration from munin environment
-		host = os.environ.get('host', "localhost")
-		port = os.environ.get('port', 10011)
+		# for key in results print every entry in dict
+		[print('\n'.join(data[key])) for key in data.keys()]
 
-		with ts3.query.TS3Connection(host, port) as ts3conn:
+	def clean_fieldname(self, text):
+		return re.sub(r"(^[^A-Za-z_]|[^A-Za-z0-9_])", "", text)
+
+	def get_names(self, response):
+		# todo comment
+		for server in response:
+			self.names[str(server["virtualserver_id"])] = self.clean_fieldname(server["virtualserver_name"])
+
+	def run(self, arg=None):
+		with ts3.query.TS3Connection(self.host, self.port) as ts3conn:
 			# will raise a TS3QueryError if response code is not 0
 			try:
-				ts3conn.login(client_login_name=os.environ['username'],
-							client_login_password=os.environ['password'])
+				ts3conn.login(client_login_name=os.environ['username'], client_login_password=os.environ['password'])
 
-				hostinfo = ts3conn.hostinfo().parsed
-				result = self.get_data(hostinfo[0])
+				if arg == "config":
+					serverlist = ts3conn.serverlist().parsed
+					self.get_names(serverlist)
+					return
 
-				# for key in results print every entry in dict
-				[print('\n'.join(result[key])) for key in result.keys()]
+				for sid in self.id:
+					if sid.isdigit():
+						ts3conn.use(sid=sid)
+						info = ts3conn.serverinfo().parsed
+						self.get_data(sid, info[0])
 
-			except (ts3.query.TS3QueryError,KeyError) as err:
+			except (ts3.query.TS3QueryError, KeyError) as err:
 				print("Login failed:", err.resp.error["msg"])
 				exit(1)
 
@@ -150,8 +215,8 @@ class TeamspeakMulti:
 		if sys.argv.__len__() >= 2:
 			# check if first argument is config or autoconf if not fetch data
 			if sys.argv[1] == "config":
-				# for key in config().keys() print every entry in dict
-				[print('\n'.join(self.config()[key])) for key in self.config().keys()]
+				# add comment
+				self.config()
 				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
 					self.run()
 			elif sys.argv[1] == 'autoconf':
