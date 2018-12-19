@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#
+
 # Plugin to monitor a TeamSpeak Server via telnet
 # 	* general bandwidth
 # 	* filetransfer bandwidth
 # 	* uptime
 # 	* user count
-#
+#   * connection statistics
+
 # Parameters understood:
 #     config   (required)
 #     autoconf (optional - used by munin-config)
-#
+
 # Magic markers - optional - used by installation scripts and
 # munin-config:
 #
@@ -54,7 +55,7 @@ class TeamspeakMulti:
 				'graph_scale no',
 				'graph_vlabel days',
 				'graph_category voip',
-				'graph_info graph showing the Teamspeak3 overall uptime'
+				'graph_info graph showing the Teamspeak3 uptime'
 			],
 			'users': [
 				'multigraph teamspeak_usercount',
@@ -63,7 +64,7 @@ class TeamspeakMulti:
 				'graph_printf %.0lf',
 				'graph_vlabel connected users',
 				'graph_category voip',
-				'graph_info This graph shows the number of connected users on the Teamspeak3 server'
+				'graph_info graph showing the number of connected users to the Teamspeak3 server'
 			],
 			'connection': [
 				'multigraph teamspeak_connection',
@@ -85,7 +86,7 @@ class TeamspeakMulti:
 				'up_%d.label %s',
 				'up_%d.info total amount of bytes sent in the last 5 minutes',
 				'up_%d.type DERIVE',
-				'up_%d.negative down',
+				'up_%d.negative up_%d',
 				'up_%d.min 0'
 			],
 			"filetransfer": [
@@ -97,13 +98,13 @@ class TeamspeakMulti:
 				'ftup_%d.label %s',
 				'ftup_%d.info file transfer bytes sent in the last 5 minutes',
 				'ftup_%d.type DERIVE',
-				'ftup_%d.negative ftdown',
+				'ftup_%d.negative ftup_%d',
 				'ftup_%d.min 0'
 			],
 			"uptime": [
 				'uptime_%d.label %s uptime',
 				'uptime_%d.info %s server uptime',
-				'uptime_%d.cdef uptime,86400,/',
+				'uptime_%d.cdef uptime_%d,86400,/',
 				'uptime_%d.min 0',
 				'uptime_%d.draw AREA'
 			],
@@ -116,15 +117,9 @@ class TeamspeakMulti:
 				'queryuser_%d.min 0',
 				'ping_%d.label %s avg. ping',
 				'ping_%d.info average ping of users connected to %s',
-				'ping_%d.min 0',
-				'pktloss_%d.label %s avg. packetloss',
-				'pktloss_%d.info average packetloss of users connected to %s',
-				'pktloss_%d.min 0'
+				'ping_%d.min 0'
 			],
 			"connection": [
-				'ping_%d.label %s avg. ping',
-				'ping_%d.info average ping of users connected to %s',
-				'ping_%d.min 0',
 				'pktloss_%d.label %s avg. packetloss',
 				'pktloss_%d.info average packetloss of users connected to %s',
 				'pktloss_%d.min 0'
@@ -132,12 +127,15 @@ class TeamspeakMulti:
 		}
 
 	def config(self):
-		# todo comment
+		# request additional info from the run method
 		self.run("config")
 
+		# for every key in self.graph print out the config parameter
 		for key in self.graph:
 			print('\n'.join(self.graph[key]))
 
+			# in addition to the general config add specific field values
+			# fielname_$sid.option string
 			for sid in self.id:
 				if sid.isdigit():
 					name = self.names[sid]
@@ -172,20 +170,21 @@ class TeamspeakMulti:
 		data['teamspeak_usercount'].append('multigraph teamspeak_usercount')
 		data['teamspeak_usercount'].append('user_%s.value %s' % (sid, clientcount))
 		data['teamspeak_usercount'].append('queryuser_%s.value %s' % (sid, response["virtualserver_queryclientsonline"]))
+		data['teamspeak_usercount'].append('ping_%s.value %s' % (sid, response["virtualserver_total_ping"]))
 
 		# connection statistics
 		data['teamspeak_connection'].append('multigraph teamspeak_connection')
-		data['teamspeak_connection'].append('ping_%s.value %s' % (sid, response["virtualserver_total_ping"]))
 		data['teamspeak_connection'].append('pktloss_%s.value %s' % (sid, response["virtualserver_total_packetloss_total"]))
 
 		# for key in results print every entry in dict
 		[print('\n'.join(data[key])) for key in data.keys()]
 
 	def clean_fieldname(self, text):
-		return re.sub(r"(^[^A-Za-z_]|[^A-Za-z0-9_])", "", text)
+		# munin suggestion to produce clean fieldnames
+		return re.sub(r"(^[^A-Za-z_]|[^A-Za-z0-9_ ])", "", text)
 
 	def get_names(self, response):
-		# todo comment
+		# method to match serverid to the servername
 		for server in response:
 			self.names[str(server["virtualserver_id"])] = self.clean_fieldname(server["virtualserver_name"])
 
@@ -215,7 +214,7 @@ class TeamspeakMulti:
 		if sys.argv.__len__() >= 2:
 			# check if first argument is config or autoconf if not fetch data
 			if sys.argv[1] == "config":
-				# add comment
+				# output config parameter
 				self.config()
 				if os.environ.get('MUNIN_CAP_DIRTYCONFIG') == '1':
 					self.run()
