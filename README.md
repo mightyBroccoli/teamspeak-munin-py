@@ -12,6 +12,8 @@ password = password
 # host and port are not required if the default values are true for your setup
 host = localhost
 port = 10011
+# ids should only be seperated by kommas ( , ) without whitespaces
+id = 1,2
 ```
 To install these plugins, you just have to symlink those plugins you would like to activate to the munin plugin directory eg. `/etc/munin/plugins/`. Or if you want to use the multigraph plugin only symlink that one the the munin plugin directory.
 
